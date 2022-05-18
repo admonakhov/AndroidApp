@@ -1,36 +1,51 @@
+import os
+import re
 from kivymd.app import MDApp
-from kivymd.uix.button import MDRectangleFlatButton
+from kivymd.toast import toast
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDRectangleFlatButton
+from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
-from kivymd.uix.swiper import MDSwiper, MDSwiperItem
 from kivymd.uix.selectioncontrol import MDCheckbox
+from kivymd.uix.swiper import MDSwiper, MDSwiperItem
 
 
-from kivymd.uix.filemanager import MDFileManager
-from kivymd.toast import toast
-import os, re
-
-images = ['1.jpg', '2.jpg', '3.jpg']
+width = 500
+height = 1000
 
 
+def add_widgets(parent, childs):
+    for child in childs:
+        parent.add_widget(child)
 
-
-class FileManager(MDBoxLayout):
+class FileManager(MDGridLayout):
     def __init__(self):
         super(FileManager, self).__init__()
-        fm_btn = MDRectangleFlatButton(text='File Manager')
-        fm_btn.bind(on_press=self.file_manager_open)
-        self.add_widget(fm_btn)
-        self.filelist = {}
-        self.file_layout = MDGridLayout(rows=1, cols=3, padding=(20, 20), spacing=(10, 10))
 
-        self.add_widget(self.file_layout)
+        self.cols = 1
+        self.rows = 2
+
+        fm_btn = MDRectangleFlatButton(text='Choose files')
+        btns = MDGridLayout(cols=2, rows=1, size_hint_y=None)
+        add_widgets(btns, [fm_btn])
+
+        self.filelist = {}
+        self.file_layout = MDGridLayout(rows=1, cols=3, size_hint_x=None, width=width)
+        add_widgets(self, [self.file_layout, btns])
+        fm_btn.bind(on_press=self.file_manager_open)
+
+
+    def accept_callback(self,  ev):
+        self.checked_files = []
+        for file in self.filelist.keys():
+            if (self.filelist[file][1].active):
+                self.checked_files.append(self.filelist[file][0])
 
 
     def file_manager_open(self, ev=None):
         self.file_manager = MDFileManager(exit_manager=self.exit_manager, select_path=self.select_path)
-        self.file_manager.show('C://users//antmo')
+        self.file_manager.show('/home/ant')
 
     def select_path(self, path):
         self.exit_manager()
@@ -45,13 +60,17 @@ class FileManager(MDBoxLayout):
         if os.path.isdir(path):
             for _path, folders, files in os.walk(path):
                 for file in files:
-                    match = re.findall(r'\w*.pdf',file)
+                    match = re.findall(r'\w*.pdf', file)
                     if match:
-                        self.filelist[match[0]] = _path+'//'+match[0]
+                        self.filelist[match[0]] = _path+'/'+match[0]
+                        self.filelist[match[0]] = []
+                        self.filelist[match[0]].append(_path+'/'+match[0])
         elif os.path.isfile(path):
             match = re.findall(r'\w*.pdf', path)
             if match:
-                self.filelist[match[0]] = path+'//'+match[0]
+                self.filelist[match[0]] = path+'/'+match[0]
+                self.filelist[match[0]] = []
+                self.filelist[match[0]].append(path+'/'+match[0])
 
     def look_files(self):
          self.file_layout.clear_widgets()
@@ -64,9 +83,13 @@ class FileManager(MDBoxLayout):
                 text = file
             self.file_layout.add_widget(MDLabel(text=str(i+1), size_hint_y=0.3, size_hint_x=0.5))
             self.file_layout.add_widget(MDLabel(text=text, size_hint_y=0.3, size_hint_x=0.5))
-            self.file_layout.add_widget(MDCheckbox(active=True))
+            self.filelist[file].append(MDCheckbox(active=True))
+            self.filelist[file][1].bind(on_press=self.accept_callback)
+            self.file_layout.add_widget(self.filelist[file][1])
 
-
+class Editor(MDBoxLayout):
+    def __init__(self):
+        super(Editor, self).__init__()
 
 
 class Swiper(MDSwiper):
@@ -86,19 +109,13 @@ class MainApp(MDApp):
 
     def build(self):
         fm = FileManager()
+        editor = Editor()
         swiper = Swiper()
         swiper.add_any_widget(fm)
+        swiper.add_any_widget(editor)
         main_layout = MDBoxLayout()
-
-        exit_btn = MDRectangleFlatButton(text='Exit', size_hint_y=0.5, size_hint_x=0.1)
-        exit_btn.bind(on_press=exit)
         main_layout.add_widget(swiper)
-        main_layout.add_widget(exit_btn)
-
-
         return main_layout
-
-
 
 
 MainApp().run()
